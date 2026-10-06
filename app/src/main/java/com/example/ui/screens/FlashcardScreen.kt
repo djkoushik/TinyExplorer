@@ -13,17 +13,21 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -68,6 +72,7 @@ import kotlinx.coroutines.launch
 fun FlashcardScreen(
     currentCategory: FlashcardCategory,
     currentCard: Flashcard?,
+    customCardNames: Map<String, String>,
     showLabels: Boolean,
     hapticEnabled: Boolean,
     onCategorySelected: (FlashcardCategory) -> Unit,
@@ -75,6 +80,7 @@ fun FlashcardScreen(
     onPreviousCard: () -> Unit,
     onNextCard: () -> Unit,
     onOpenParentSettings: () -> Unit,
+    onEditCardName: (Flashcard) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val haptic = LocalHapticFeedback.current
@@ -85,7 +91,6 @@ fun FlashcardScreen(
 
     fun triggerTapInteraction(offset: Offset) {
         val now = System.currentTimeMillis()
-        // Multi-touch & debounce guard: ignore taps closer than 220ms
         if (now - lastTapTime < 220) return
         lastTapTime = now
 
@@ -94,7 +99,6 @@ fun FlashcardScreen(
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         }
 
-        // Bouncy spring scale animation
         coroutineScope.launch {
             cardScale.snapTo(0.95f)
             cardScale.animateTo(
@@ -114,14 +118,16 @@ fun FlashcardScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
+                // safeDrawing handles camera cutouts, notches, status bars and navigation bars
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                // Add generous top margin so top buttons never collide with front camera punch holes
+                .padding(top = 10.dp)
         ) {
             // Sleek Top Bar (Category selector + Parent lock)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 6.dp, vertical = 4.dp),
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 CategorySelectorBar(
@@ -147,8 +153,6 @@ fun FlashcardScreen(
                         awaitPointerEventScope {
                             while (true) {
                                 val event = awaitPointerEvent()
-                                // Baby-proof multi-touch suppression:
-                                // If more than 1 pointer is on screen, ignore to prevent palm resting bugs
                                 if (event.type == PointerEventType.Press && event.changes.size == 1) {
                                     val change = event.changes.first()
                                     if (!change.isConsumed) {
@@ -176,6 +180,8 @@ fun FlashcardScreen(
                         },
                         label = "card_transition"
                     ) { targetCard ->
+                        val customTitle = customCardNames[targetCard.id]
+
                         Card(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -192,27 +198,39 @@ fun FlashcardScreen(
                                 when (targetCard) {
                                     is Flashcard.ColorCard -> ColorCardVisual(
                                         card = targetCard,
-                                        showLabels = showLabels
+                                        displayName = customTitle ?: targetCard.title,
+                                        showLabels = showLabels,
+                                        onEditName = { onEditCardName(targetCard) }
                                     )
                                     is Flashcard.NumberCard -> NumberCardVisual(
                                         card = targetCard,
-                                        showLabels = showLabels
+                                        displayName = customTitle ?: targetCard.wordName,
+                                        showLabels = showLabels,
+                                        onEditName = { onEditCardName(targetCard) }
                                     )
                                     is Flashcard.LetterCard -> LetterCardVisual(
                                         card = targetCard,
-                                        showLabels = showLabels
+                                        displayName = customTitle ?: targetCard.exampleWord,
+                                        showLabels = showLabels,
+                                        onEditName = { onEditCardName(targetCard) }
                                     )
                                     is Flashcard.AnimalCard -> AnimalCardVisual(
                                         card = targetCard,
-                                        showLabels = showLabels
+                                        displayName = customTitle ?: targetCard.title,
+                                        showLabels = showLabels,
+                                        onEditName = { onEditCardName(targetCard) }
                                     )
                                     is Flashcard.VehicleCard -> VehicleCardVisual(
                                         card = targetCard,
-                                        showLabels = showLabels
+                                        displayName = customTitle ?: targetCard.title,
+                                        showLabels = showLabels,
+                                        onEditName = { onEditCardName(targetCard) }
                                     )
                                     is Flashcard.CustomCard -> CustomCardVisual(
                                         card = targetCard,
+                                        displayName = customTitle ?: targetCard.title,
                                         showLabels = showLabels,
+                                        onEditName = { onEditCardName(targetCard) },
                                         onOpenParentSettings = onOpenParentSettings
                                     )
                                 }
@@ -227,7 +245,7 @@ fun FlashcardScreen(
                 SparkleEffect(tapOffset = tapPosition)
             }
 
-            // Compact Floating Bottom Controls (Takes minimal vertical space)
+            // Compact Floating Bottom Controls
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -252,20 +270,35 @@ fun FlashcardScreen(
                     }
                 }
 
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                    shadowElevation = 1.dp
-                ) {
-                    Text(
-                        text = "👆 Tap anywhere to explore!",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
-                    )
+                // Quick Edit Name Button (for parents)
+                if (currentCard != null) {
+                    Surface(
+                        onClick = { onEditCardName(currentCard) },
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                        shadowElevation = 2.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Card Name",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Edit Name",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                ),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 }
 
                 Surface(

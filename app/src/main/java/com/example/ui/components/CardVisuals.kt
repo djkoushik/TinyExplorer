@@ -2,7 +2,6 @@ package com.example.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,11 +19,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,7 +50,9 @@ import java.io.File
 @Composable
 fun ColorCardVisual(
     card: Flashcard.ColorCard,
+    displayName: String,
     showLabels: Boolean,
+    onEditName: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val targetColor = Color(card.colorHex)
@@ -125,16 +128,30 @@ fun ColorCardVisual(
                     color = if (isLightColor) Color(0xFF1E293B) else Color.White,
                     shadowElevation = 8.dp
                 ) {
-                    Text(
-                        text = card.title,
-                        modifier = Modifier.padding(horizontal = 44.dp, vertical = 14.dp),
-                        style = MaterialTheme.typography.displayMedium.copy(
-                            fontWeight = FontWeight.Black,
-                            fontSize = 48.sp
-                        ),
-                        color = if (isLightColor) Color.White else targetColor,
-                        textAlign = TextAlign.Center
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 36.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = displayName.uppercase(),
+                            style = MaterialTheme.typography.displayMedium.copy(
+                                fontWeight = FontWeight.Black,
+                                fontSize = 44.sp
+                            ),
+                            color = if (isLightColor) Color.White else targetColor,
+                            textAlign = TextAlign.Center
+                        )
+                        if (onEditName != null) {
+                            IconButton(onClick = onEditName, modifier = Modifier.size(36.dp).padding(start = 8.dp)) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Name",
+                                    tint = if (isLightColor) Color.White.copy(alpha = 0.7f) else targetColor.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -145,7 +162,9 @@ fun ColorCardVisual(
 @Composable
 fun NumberCardVisual(
     card: Flashcard.NumberCard,
+    displayName: String,
     showLabels: Boolean,
+    onEditName: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val accentColor = Color(card.accentColorHex)
@@ -221,16 +240,30 @@ fun NumberCardVisual(
                 shadowElevation = 6.dp,
                 modifier = Modifier.padding(bottom = 12.dp)
             ) {
-                Text(
-                    text = card.wordName.uppercase(),
-                    modifier = Modifier.padding(horizontal = 36.dp, vertical = 12.dp),
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontWeight = FontWeight.Black,
-                        fontSize = 32.sp
-                    ),
-                    color = Color.White,
-                    textAlign = TextAlign.Center
-                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 30.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = displayName.uppercase(),
+                        style = MaterialTheme.typography.headlineLarge.copy(
+                            fontWeight = FontWeight.Black,
+                            fontSize = 32.sp
+                        ),
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+                    if (onEditName != null) {
+                        IconButton(onClick = onEditName, modifier = Modifier.size(36.dp).padding(start = 8.dp)) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Name",
+                                tint = Color.White.copy(alpha = 0.8f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -239,7 +272,9 @@ fun NumberCardVisual(
 @Composable
 fun LetterCardVisual(
     card: Flashcard.LetterCard,
+    displayName: String,
     showLabels: Boolean,
+    onEditName: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val accentColor = Color(card.accentColorHex)
@@ -290,16 +325,28 @@ fun LetterCardVisual(
                 Spacer(modifier = Modifier.width(16.dp))
                 if (showLabels) {
                     Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = displayName.uppercase(),
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 32.sp
+                                ),
+                                color = accentColor
+                            )
+                            if (onEditName != null) {
+                                IconButton(onClick = onEditName, modifier = Modifier.size(32.dp).padding(start = 6.dp)) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit Name",
+                                        tint = accentColor.copy(alpha = 0.7f),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
                         Text(
-                            text = card.exampleWord.uppercase(),
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                fontWeight = FontWeight.Black,
-                                fontSize = 32.sp
-                            ),
-                            color = accentColor
-                        )
-                        Text(
-                            text = "${card.letter} is for ${card.exampleWord}",
+                            text = "${card.letter} is for $displayName",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
@@ -316,7 +363,9 @@ fun LetterCardVisual(
 @Composable
 fun AnimalCardVisual(
     card: Flashcard.AnimalCard,
+    displayName: String,
     showLabels: Boolean,
+    onEditName: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val accentColor = Color(card.accentColorHex)
@@ -328,7 +377,6 @@ fun AnimalCardVisual(
             .padding(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Complete Image Display Container (Never cropped, completely visible!)
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -349,8 +397,7 @@ fun AnimalCardVisual(
                         .data(card.imageAssetPath)
                         .crossfade(true)
                         .build(),
-                    contentDescription = card.title,
-                    // ContentScale.Fit ensures the COMPLETE animal is displayed without being cut off!
+                    contentDescription = displayName,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize(),
                     loading = {
@@ -365,7 +412,6 @@ fun AnimalCardVisual(
                     }
                 )
 
-                // Top corner badge
                 Surface(
                     shape = CircleShape,
                     color = Color.White.copy(alpha = 0.92f),
@@ -384,7 +430,6 @@ fun AnimalCardVisual(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Large Bottom Information Bar
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -400,14 +445,26 @@ fun AnimalCardVisual(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (showLabels) {
-                    Text(
-                        text = card.title,
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            fontSize = 38.sp
-                        ),
-                        color = accentColor
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = displayName.uppercase(),
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.Black,
+                                fontSize = 36.sp
+                            ),
+                            color = accentColor
+                        )
+                        if (onEditName != null) {
+                            IconButton(onClick = onEditName, modifier = Modifier.size(36.dp).padding(start = 8.dp)) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Name",
+                                    tint = accentColor.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Surface(
@@ -433,7 +490,9 @@ fun AnimalCardVisual(
 @Composable
 fun VehicleCardVisual(
     card: Flashcard.VehicleCard,
+    displayName: String,
     showLabels: Boolean,
+    onEditName: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val accentColor = Color(card.accentColorHex)
@@ -445,7 +504,6 @@ fun VehicleCardVisual(
             .padding(10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Complete Image Display Container (Never cropped, completely visible!)
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -466,8 +524,7 @@ fun VehicleCardVisual(
                         .data(card.imageAssetPath)
                         .crossfade(true)
                         .build(),
-                    contentDescription = card.title,
-                    // ContentScale.Fit ensures the COMPLETE vehicle is displayed without being cut off!
+                    contentDescription = displayName,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize(),
                     loading = {
@@ -500,7 +557,6 @@ fun VehicleCardVisual(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Large Bottom Information Bar
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -516,14 +572,26 @@ fun VehicleCardVisual(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (showLabels) {
-                    Text(
-                        text = card.title,
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.Black,
-                            fontSize = 34.sp
-                        ),
-                        color = accentColor
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = displayName.uppercase(),
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.Black,
+                                fontSize = 34.sp
+                            ),
+                            color = accentColor
+                        )
+                        if (onEditName != null) {
+                            IconButton(onClick = onEditName, modifier = Modifier.size(36.dp).padding(start = 8.dp)) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Name",
+                                    tint = accentColor.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 Surface(
@@ -549,7 +617,9 @@ fun VehicleCardVisual(
 @Composable
 fun CustomCardVisual(
     card: Flashcard.CustomCard,
+    displayName: String,
     showLabels: Boolean,
+    onEditName: (() -> Unit)? = null,
     onOpenParentSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -577,7 +647,7 @@ fun CustomCardVisual(
                 ) {
                     SubcomposeAsyncImage(
                         model = file,
-                        contentDescription = card.title,
+                        contentDescription = displayName,
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize(),
                         loading = {
@@ -596,15 +666,29 @@ fun CustomCardVisual(
                     color = Color(0xFF3B82F6),
                     shadowElevation = 4.dp
                 ) {
-                    Text(
-                        text = "FAMILY & PETS",
-                        modifier = Modifier.padding(horizontal = 32.dp, vertical = 10.dp),
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp
-                        ),
-                        color = Color.White
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 28.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = displayName.uppercase(),
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 22.sp
+                            ),
+                            color = Color.White
+                        )
+                        if (onEditName != null) {
+                            IconButton(onClick = onEditName, modifier = Modifier.size(32.dp).padding(start = 6.dp)) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Name",
+                                    tint = Color.White.copy(alpha = 0.8f),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         } else {

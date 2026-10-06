@@ -17,6 +17,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ui.components.EditCardNameDialog
 import com.example.ui.screens.FlashcardScreen
 import com.example.ui.screens.ParentalSettingsDialog
 import com.example.ui.theme.MyApplicationTheme
@@ -50,30 +51,38 @@ class MainActivity : ComponentActivity() {
 
                 // Guard accidental back gestures during toddler play
                 BackHandler(enabled = true) {
-                    if (uiState.isParentSettingsOpen) {
-                        viewModel.closeParentSettings()
+                    when {
+                        uiState.cardBeingEdited != null -> viewModel.closeEditCardDialog()
+                        uiState.isParentSettingsOpen -> viewModel.closeParentSettings()
+                        else -> {
+                            // Guard accidental app closure by toddler
+                        }
                     }
-                    // Prevent toddler from accidentally closing app
                 }
 
                 Surface(modifier = Modifier.fillMaxSize()) {
                     FlashcardScreen(
                         currentCategory = uiState.currentCategory,
                         currentCard = uiState.currentCard,
+                        customCardNames = uiState.customCardNames,
                         showLabels = uiState.showLabels,
                         hapticEnabled = uiState.hapticEnabled,
                         onCategorySelected = viewModel::selectCategory,
                         onCardTapped = viewModel::onScreenTap,
                         onPreviousCard = viewModel::previousCard,
                         onNextCard = viewModel::nextCard,
-                        onOpenParentSettings = viewModel::openParentSettings
+                        onOpenParentSettings = viewModel::openParentSettings,
+                        onEditCardName = viewModel::openEditCardDialog
                     )
 
                     if (uiState.isParentSettingsOpen) {
                         ParentalSettingsDialog(
                             customPhotos = uiState.customPhotos,
+                            customCardNames = uiState.customCardNames,
+                            repository = viewModel.repository,
                             onAddPhoto = viewModel::addCustomPhoto,
                             onDeletePhoto = viewModel::deleteCustomPhoto,
+                            onEditCardName = viewModel::openEditCardDialog,
                             hapticEnabled = uiState.hapticEnabled,
                             onToggleHaptic = viewModel::toggleHaptic,
                             showLabels = uiState.showLabels,
@@ -81,6 +90,22 @@ class MainActivity : ComponentActivity() {
                             immersiveMode = uiState.immersiveMode,
                             onToggleImmersive = viewModel::toggleImmersiveMode,
                             onDismiss = viewModel::closeParentSettings
+                        )
+                    }
+
+                    uiState.cardBeingEdited?.let { card ->
+                        val currentCustom = uiState.customCardNames[card.id]
+                        val currentDisplayName = currentCustom ?: when (card) {
+                            is com.example.data.model.Flashcard.LetterCard -> card.exampleWord
+                            is com.example.data.model.Flashcard.NumberCard -> card.wordName
+                            else -> card.title
+                        }
+                        EditCardNameDialog(
+                            card = card,
+                            currentDisplayName = currentDisplayName,
+                            onSaveName = { newName -> viewModel.updateCardName(card.id, newName) },
+                            onResetDefault = { viewModel.resetCardName(card.id) },
+                            onDismiss = viewModel::closeEditCardDialog
                         )
                     }
                 }

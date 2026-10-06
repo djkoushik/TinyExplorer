@@ -20,6 +20,7 @@ class DataStoreManager(private val context: Context) {
         val KEY_HAPTIC_ENABLED = booleanPreferencesKey("haptic_enabled")
         val KEY_SHOW_LABELS = booleanPreferencesKey("show_labels")
         val KEY_IMMERSIVE_MODE = booleanPreferencesKey("immersive_mode")
+        private const val PREFIX_CUSTOM_NAME = "custom_name_"
     }
 
     val selectedCategoryFlow: Flow<FlashcardCategory> = context.dataStore.data.map { prefs ->
@@ -37,6 +38,17 @@ class DataStoreManager(private val context: Context) {
 
     val immersiveModeFlow: Flow<Boolean> = context.dataStore.data.map { prefs ->
         prefs[KEY_IMMERSIVE_MODE] ?: true
+    }
+
+    val customCardNamesFlow: Flow<Map<String, String>> = context.dataStore.data.map { prefs ->
+        val map = mutableMapOf<String, String>()
+        prefs.asMap().forEach { (key, value) ->
+            if (key.name.startsWith(PREFIX_CUSTOM_NAME) && value is String) {
+                val cardId = key.name.removePrefix(PREFIX_CUSTOM_NAME)
+                map[cardId] = value
+            }
+        }
+        map
     }
 
     suspend fun setSelectedCategory(category: FlashcardCategory) {
@@ -60,6 +72,24 @@ class DataStoreManager(private val context: Context) {
     suspend fun setImmersiveMode(enabled: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[KEY_IMMERSIVE_MODE] = enabled
+        }
+    }
+
+    suspend fun setCardCustomName(cardId: String, newName: String) {
+        context.dataStore.edit { prefs ->
+            val key = stringPreferencesKey("$PREFIX_CUSTOM_NAME$cardId")
+            if (newName.isBlank()) {
+                prefs.remove(key)
+            } else {
+                prefs[key] = newName.trim()
+            }
+        }
+    }
+
+    suspend fun resetCardCustomName(cardId: String) {
+        context.dataStore.edit { prefs ->
+            val key = stringPreferencesKey("$PREFIX_CUSTOM_NAME$cardId")
+            prefs.remove(key)
         }
     }
 }

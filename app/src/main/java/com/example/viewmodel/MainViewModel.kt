@@ -11,6 +11,7 @@ import com.example.data.model.FlashcardCategory
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -18,15 +19,17 @@ data class MainUiState(
     val currentCategory: FlashcardCategory = FlashcardCategory.ALL,
     val currentCard: Flashcard? = null,
     val customPhotos: List<Flashcard.CustomCard> = emptyList(),
+    val customCardNames: Map<String, String> = emptyMap(),
     val hapticEnabled: Boolean = true,
     val showLabels: Boolean = true,
     val immersiveMode: Boolean = true,
     val isParentSettingsOpen: Boolean = false,
+    val cardBeingEdited: Flashcard? = null,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = FlashcardRepository(application)
+    val repository = FlashcardRepository(application)
     private val dataStoreManager = DataStoreManager(application)
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -38,6 +41,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         loadInitialState()
+        observeCustomNames()
     }
 
     private fun loadInitialState() {
@@ -47,16 +51,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val haptic = dataStoreManager.hapticEnabledFlow.first()
             val labels = dataStoreManager.showLabelsFlow.first()
             val immersive = dataStoreManager.immersiveModeFlow.first()
+            val names = dataStoreManager.customCardNamesFlow.first()
 
             _uiState.value = _uiState.value.copy(
                 currentCategory = savedCategory,
                 customPhotos = customCards,
+                customCardNames = names,
                 hapticEnabled = haptic,
                 showLabels = labels,
                 immersiveMode = immersive
             )
 
             pickRandomCard(savedCategory, avoidSameId = false)
+        }
+    }
+
+    private fun observeCustomNames() {
+        viewModelScope.launch {
+            dataStoreManager.customCardNamesFlow.collectLatest { names ->
+                _uiState.value = _uiState.value.copy(customCardNames = names)
+            }
         }
     }
 
@@ -91,7 +105,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun pickRandomCard(category: FlashcardCategory, avoidSameId: Boolean) {
         val cardToSelect: Flashcard = if (category == FlashcardCategory.ALL) {
-            // Fair balanced category selection: evenly distributes Animals, Vehicles, Colors, Numbers, Letters
             val subCategories = mutableListOf(
                 FlashcardCategory.ANIMALS,
                 FlashcardCategory.VEHICLES,
@@ -170,6 +183,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 pickRandomCard(_uiState.value.currentCategory, avoidSameId = false)
             }
         }
+    }
+
+    fun updateCardName(cardId: String, newName: String) {
+        viewModelScope.launch {
+            dataStoreManager.setCardCustomName(cardId, newName)
+            closeEditCardDialog()
+        }
+    }
+
+    fun resetCardName(cardId: String) {
+        viewModelScope.launch {
+            dataStoreManager.resetCardCustomName(cardId)
+            closeEditCardDialog()
+        }
+    }
+
+    fun openEditCardDialog(card: Flashcard) {
+        _uiState.value = _uiState.value.copy(cardBeingEdited = card)
+    }
+
+    fun closeEditCardDialog() {
+        _uiState.value = _uiState.value.copy(cardBeingEdited = null)
     }
 
     fun toggleHaptic(enabled: Boolean) {

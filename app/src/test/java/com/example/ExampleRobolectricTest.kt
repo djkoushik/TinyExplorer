@@ -6,8 +6,10 @@ import androidx.test.core.app.ApplicationProvider
 import coil.ImageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import com.example.data.DataStoreManager
 import com.example.data.FlashcardRepository
 import com.example.data.model.FlashcardCategory
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -72,5 +74,19 @@ class ExampleRobolectricTest {
             .build()
         val result = imageLoader.execute(request)
         assertTrue("Coil should load asset image: $result", result is SuccessResult)
+    }
+
+    @Test
+    fun `verify custom card name persistence`() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val dataStoreManager = DataStoreManager(context)
+
+        dataStoreManager.setCardCustomName("ani_dog", "Puppy Dog")
+        val names = dataStoreManager.customCardNamesFlow.first()
+        assertEquals("Puppy Dog", names["ani_dog"])
+
+        dataStoreManager.resetCardCustomName("ani_dog")
+        val resetNames = dataStoreManager.customCardNamesFlow.first()
+        assertTrue("ani_dog custom name should be removed", resetNames["ani_dog"] == null)
     }
 }

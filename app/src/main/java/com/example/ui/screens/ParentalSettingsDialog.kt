@@ -6,6 +6,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,9 +29,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Spellcheck
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -45,11 +48,16 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -57,14 +65,19 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.example.data.FlashcardRepository
 import com.example.data.model.Flashcard
+import com.example.data.model.FlashcardCategory
 import java.io.File
 
 @Composable
 fun ParentalSettingsDialog(
     customPhotos: List<Flashcard.CustomCard>,
+    customCardNames: Map<String, String>,
+    repository: FlashcardRepository,
     onAddPhoto: (Uri) -> Unit,
     onDeletePhoto: (String) -> Unit,
+    onEditCardName: (Flashcard) -> Unit,
     hapticEnabled: Boolean,
     onToggleHaptic: (Boolean) -> Unit,
     showLabels: Boolean,
@@ -82,6 +95,8 @@ fun ParentalSettingsDialog(
         }
     )
 
+    var selectedEditCategory by remember { mutableStateOf(FlashcardCategory.ANIMALS) }
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -89,7 +104,7 @@ fun ParentalSettingsDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
-                .fillMaxHeight(0.88f)
+                .fillMaxHeight(0.90f)
                 .clip(RoundedCornerShape(32.dp))
                 .testTag("parental_settings_dialog"),
             color = MaterialTheme.colorScheme.surface,
@@ -129,7 +144,7 @@ fun ParentalSettingsDialog(
                                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                             )
                             Text(
-                                text = "Safe Offline Area",
+                                text = "Customize names & app settings",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -144,14 +159,161 @@ fun ParentalSettingsDialog(
                     }
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 14.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    // Card Names & Labels Editor Section
+                    Card(
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(Icons.Default.Spellcheck, contentDescription = null, tint = Color(0xFFE91E63))
+                                Text(
+                                    text = "Edit Card Names & Labels",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                                )
+                            }
+                            Text(
+                                text = "Tap any card below to change its name and save it permanently:",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)
+                            )
+
+                            // Category chips for editor
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                items(listOf(
+                                    FlashcardCategory.ANIMALS,
+                                    FlashcardCategory.VEHICLES,
+                                    FlashcardCategory.COLORS,
+                                    FlashcardCategory.NUMBERS,
+                                    FlashcardCategory.LETTERS,
+                                )) { cat ->
+                                    val isSel = cat == selectedEditCategory
+                                    Surface(
+                                        onClick = { selectedEditCategory = cat },
+                                        shape = RoundedCornerShape(16.dp),
+                                        color = if (isSel) MaterialTheme.colorScheme.primary else Color.White,
+                                        shadowElevation = if (isSel) 3.dp else 1.dp
+                                    ) {
+                                        Text(
+                                            text = "${cat.iconEmoji} ${cat.displayName}",
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = if (isSel) Color.White else Color(0xFF1E293B)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Horizontal list of cards to edit
+                            val cardsToEdit = repository.getCardsForCategory(selectedEditCategory)
+                            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                items(cardsToEdit, key = { it.id }) { card ->
+                                    val customName = customCardNames[card.id]
+                                    val displayName = customName ?: when (card) {
+                                        is Flashcard.LetterCard -> card.exampleWord
+                                        is Flashcard.NumberCard -> card.wordName
+                                        else -> card.title
+                                    }
+
+                                    Surface(
+                                        onClick = { onEditCardName(card) },
+                                        shape = RoundedCornerShape(16.dp),
+                                        color = Color.White,
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            width = if (customName != null) 2.dp else 1.dp,
+                                            color = if (customName != null) MaterialTheme.colorScheme.primary else Color(0xFFE2E8F0)
+                                        ),
+                                        shadowElevation = 2.dp,
+                                        modifier = Modifier.width(130.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(10.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            when (card) {
+                                                is Flashcard.AnimalCard -> {
+                                                    AsyncImage(
+                                                        model = card.imageAssetPath,
+                                                        contentDescription = null,
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier.size(54.dp).clip(RoundedCornerShape(10.dp))
+                                                    )
+                                                }
+                                                is Flashcard.VehicleCard -> {
+                                                    AsyncImage(
+                                                        model = card.imageAssetPath,
+                                                        contentDescription = null,
+                                                        contentScale = ContentScale.Crop,
+                                                        modifier = Modifier.size(54.dp).clip(RoundedCornerShape(10.dp))
+                                                    )
+                                                }
+                                                is Flashcard.LetterCard -> {
+                                                    Text(text = card.emoji, fontSize = 34.sp)
+                                                }
+                                                is Flashcard.NumberCard -> {
+                                                    Text(text = card.title, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Color(card.accentColorHex))
+                                                }
+                                                is Flashcard.ColorCard -> {
+                                                    Box(
+                                                        modifier = Modifier.size(40.dp).clip(CircleShape).background(Color(card.colorHex))
+                                                    )
+                                                }
+                                                else -> {
+                                                    Text("📷", fontSize = 28.sp)
+                                                }
+                                            }
+
+                                            Spacer(modifier = Modifier.height(6.dp))
+
+                                            Text(
+                                                text = displayName.uppercase(),
+                                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                                maxLines = 1,
+                                                color = if (customName != null) MaterialTheme.colorScheme.primary else Color(0xFF1E293B)
+                                            )
+
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                modifier = Modifier.padding(top = 2.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Edit,
+                                                    contentDescription = "Edit",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                                Text(
+                                                    text = if (customName != null) "Edited" else "Rename",
+                                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Custom Photos section
                     Card(
                         shape = RoundedCornerShape(24.dp),
@@ -369,7 +531,7 @@ fun ParentalSettingsDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Button(
                     onClick = onDismiss,
