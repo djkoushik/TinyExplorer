@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">Tiny Explorer</string>
+    <string name="category_all">All</string>
+    <string name="category_colors">Colors</string>
+    <string name="category_numbers">Numbers</string>
+    <string name="category_letters">Letters</string>
+    <string name="category_animals">Animals</string>
+    <string name="category_vehicles">Vehicles</string>
+    <string name="category_custom">My Photos</string>
+
+    <string name="parent_gate_title">Parents Only</string>
+    <string name="parent_gate_instruction">Touch and hold lock for 3 seconds</string>
+    <string name="parent_gate_unlocked">Unlocked</string>
+
+    <string name="custom_photos_title">Custom Photos</string>
+    <string name="custom_photos_subtitle">Add pictures of family, pets, and favorite toys for your child to discover!</string>
+    <string name="add_photo">Add Photo</string>
+    <string name="delete_photo">Delete</string>
+    <string name="no_photos_title">No Photos Added Yet</string>
+    <string name="no_photos_desc">Tap the button below to pick photos of family, pets, or familiar objects from your gallery.</string>
+    <string name="done">Done</string>
+    <string name="settings_title">Parent Settings</string>
+    <string name="sound_effects">Vibrant Haptic Feedback</string>
+    <string name="shuffle_mode">Infinite Tap Loop</string>
+    <string name="show_names">Show Word Labels</string>
+    <string name="immersive_mode">Immersive Full Screen</string>
+</resources>

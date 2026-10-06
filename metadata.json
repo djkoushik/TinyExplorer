@@ -1,0 +1,6 @@
+{
+  "name": "Tiny Explorer",
+  "description": "Offline visual flashcards and toddler discovery game with baby-proof controls and custom photos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
